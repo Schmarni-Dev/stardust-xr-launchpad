@@ -1,6 +1,7 @@
 # rocket
 
-a cli tool to run stardust for headless/non nested use.
+a cli tool to wrap a command with a seat.
+intended for stardust headless/non nested use.
 
 
 ## License

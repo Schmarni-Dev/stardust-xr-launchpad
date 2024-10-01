@@ -1,14 +1,8 @@
 [package]
-name = "stardust-xr-rocket"
+name = "stardust-xr-booster"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-serde = { version = "1.0.205", features = ["derive"] }
-toml = "0.8.19"
-clap = { version = "4.5.13", features = ["derive"] }
 color-eyre = "0.6.3"
 libseat = "0.2.1"
-tokio = { version = "1.39.2", features = ["full"] }
-# zbus = "4.4.0"
-dirs = "5.0.1"
