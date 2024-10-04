@@ -1,4 +1,4 @@
-# rocket
+# Booster
 
 a cli tool to wrap a command with a seat.
 intended for stardust headless/non nested use.
