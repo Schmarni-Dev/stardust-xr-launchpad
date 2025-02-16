@@ -9,23 +9,30 @@ use tokio::{
 };
 use zbus::interface;
 
+use crate::non_main_process::IgniterProxy;
+
 pub async fn run_main_process(server_command: Vec<String>) -> color_eyre::Result<()> {
     if server_command.is_empty() {
         panic!("Provide a valid StardustXR server launch command");
     }
     let runtime_notifier = Arc::new(Notify::new());
     let (env_channel_tx, mut env_channel_rx) = mpsc::channel(1);
-    let interface = LaunchPadInterface {
+    let interface = Launchpad {
         runtime_ready_notifier: runtime_notifier.clone(),
         stardust_server_started: env_channel_tx,
     };
-    let _connection = zbus::connection::Builder::session()?
-        .name("org.stardustxr.LaunchPad")?
-        .serve_at("/org/stardustxr/LaunchPad", interface)?
+    let conn = zbus::connection::Builder::session()?
+        .name("org.stardustxr.Launchpad")?
+        .serve_at("/org/stardustxr/Launchpad", interface)?
         .build()
         .await?;
-
-    runtime_notifier.notified().await;
+    let mut instatly_start = false;
+    if let Ok(proxy) = IgniterProxy::new(&conn).await {
+        instatly_start = proxy.instant_ignite().await.unwrap_or(false);
+    }
+    if !instatly_start {
+        runtime_notifier.notified().await;
+    }
     let mut command_iter = server_command.into_iter();
     let command = tokio::spawn(
         Command::new(command_iter.next().unwrap())
@@ -69,20 +76,20 @@ fn filter_env_vars(env_vars: HashMap<String, String>) -> HashMap<String, String>
         .collect()
 }
 
-struct LaunchPadInterface {
+struct Launchpad {
     runtime_ready_notifier: Arc<Notify>,
     stardust_server_started: mpsc::Sender<HashMap<String, String>>,
 }
 
 #[interface(
-    name = "org.stardustxr.LaunchPad",
+    name = "org.stardustxr.launchpad.Launchpad",
     proxy(
         gen_blocking = false,
-        default_path = "/org/stardustxr/LaunchPad",
-        default_service = "org.stardustxr.LaunchPad",
+        default_path = "/org/stardustxr/Launchpad",
+        default_service = "org.stardustxr.Launchpad",
     )
 )]
-impl LaunchPadInterface {
+impl Launchpad {
     async fn xr_runtime_ready(&self) {
         self.runtime_ready_notifier.notify_waiters();
     }

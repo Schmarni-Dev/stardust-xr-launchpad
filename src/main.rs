@@ -3,7 +3,7 @@ pub mod non_main_process;
 
 use clap::Parser;
 use main_process::run_main_process;
-use non_main_process::{runtime_ready, server_ready};
+use non_main_process::{igniter, server_ready};
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
@@ -18,9 +18,9 @@ async fn main() -> color_eyre::Result<()> {
         Args::Start {
             stardust_server_command,
         } => run_main_process(stardust_server_command).await?,
-        Args::RuntimeReady {
+        Args::Igniter {
             fallback_command,
-        } => runtime_ready(fallback_command).await?,
+        } => igniter(fallback_command).await?,
         Args::ServerStarted { env_vars } => server_ready(env_vars).await?,
     };
     Ok(())
@@ -37,7 +37,7 @@ enum Args {
     },
     /// this signals the main process that the OpenXR runtime is ready to accept the StardustXR
     /// server
-    RuntimeReady {
+    Igniter {
         /// run this command if the main process doesn't exist or is unreachable
         #[clap(action, last(true))]
         fallback_command: Option<Vec<String>>,

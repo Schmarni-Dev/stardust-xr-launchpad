@@ -1,13 +1,10 @@
-use std::{collections::HashMap, process::exit, time::Duration};
+use std::{collections::HashMap, process::exit};
 
-use tokio::{
-    process::Command,
-    time::{timeout, Timeout},
-};
+use tokio::process::Command;
 use tracing::{error, info, warn};
-use zbus::{Connection, Message};
+use zbus::{interface, Connection};
 
-use crate::main_process::LaunchPadInterfaceProxy;
+use crate::main_process::LaunchpadProxy;
 
 pub async fn server_ready(env_vars: Vec<String>) -> color_eyre::Result<()> {
     let vars: HashMap<String, String> = env_vars
@@ -22,7 +19,7 @@ pub async fn server_ready(env_vars: Vec<String>) -> color_eyre::Result<()> {
         .collect();
 
     let conn = Connection::session().await?;
-    if let Ok(proxy) = LaunchPadInterfaceProxy::new(&conn).await {
+    if let Ok(proxy) = LaunchpadProxy::new(&conn).await {
         if let Err(err) = proxy.stardust_server_started(vars).await {
             error!("{err}");
             exit(1);
@@ -34,9 +31,15 @@ pub async fn server_ready(env_vars: Vec<String>) -> color_eyre::Result<()> {
     Ok(())
 }
 
-pub async fn runtime_ready(fallback_command: Option<Vec<String>>) -> color_eyre::Result<()> {
-    let conn = Connection::session().await?;
-    match LaunchPadInterfaceProxy::new(&conn).await {
+pub async fn igniter(fallback_command: Option<Vec<String>>) -> color_eyre::Result<()> {
+    let conn = match igniter_get_connection().await {
+        Ok(c) => c,
+        Err(err) => {
+            start_fallback_command(fallback_command).await;
+            return Err(err.into());
+        }
+    };
+    match LaunchpadProxy::new(&conn).await {
         Ok(proxy) => {
             if let Err(err) = proxy.xr_runtime_ready().await {
                 warn!("Unable to signal the main process: {err}");
@@ -50,6 +53,31 @@ pub async fn runtime_ready(fallback_command: Option<Vec<String>>) -> color_eyre:
     };
     Ok(())
 }
+
+async fn igniter_get_connection() -> zbus::Result<Connection> {
+    zbus::connection::Builder::session()?
+        .name("org.stardustxr.launchpad.Igniter")?
+        .serve_at("/org/stardustxr/launchpad/Igniter", Igniter)?
+        .build()
+        .await
+}
+
+struct Igniter;
+
+#[interface(
+    name = "org.stardustxr.launchpad.Igniter",
+    proxy(
+        gen_blocking = false,
+        default_path = "/org/stardustxr/launchpad/Igniter",
+        default_service = "org.stardustxr.launchpad.Igniter",
+    )
+)]
+impl Igniter {
+    fn instant_ignite(&self) -> bool {
+        true
+    }
+}
+
 async fn start_fallback_command(fallback_command: Option<Vec<String>>) {
     if let Some(fallback_cmd) = fallback_command {
         info!(?fallback_cmd);
