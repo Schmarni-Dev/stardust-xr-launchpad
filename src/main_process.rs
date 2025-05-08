@@ -54,14 +54,14 @@ pub async fn run_main_process(server_command: Vec<String>) -> color_eyre::Result
     join_set.join_all().await;
 
     _ = Command::new("systemctl")
-        .args(["--user", "start", "--no-block", "stardust-session.target"])
+        .args(["--user", "start", "--no-block", "stardust-xr-session.target"])
         .status()
         .await;
 
     _ = command.await;
 
     _ = Command::new("systemctl")
-        .args(["--user", "stop", "--no-block", "stardust-session.target"])
+        .args(["--user", "stop", "--no-block", "stardust-xr-session.target"])
         .status()
         .await;
 
